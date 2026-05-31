@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SeribuCerita — Emotion Detector</title>
+  <meta name="description" content="Uji coba AI emotion classifier IndoBERT milik SeribuCerita. Deteksi emosi dari teks Bahasa Indonesia secara real-time." />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Lora:wght@400;600;700&family=Raleway:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- NAVBAR -->
+  <nav class="navbar">
+    <a href="https://seribucerita.onrender.com" class="navbar-brand">
+      Seribu<span>Cerita</span>
+    </a>
+    <div class="navbar-right">
+      <span class="model-badge">IndoBERT • 85.19%</span>
+      <div class="status-indicator">
+        <span class="status-dot" id="statusDot"></span>
+        <span class="status-text" id="statusText">Menghubungkan...</span>
+      </div>
+    </div>
+  </nav>
+
+  <!-- MAIN LAYOUT -->
+  <main class="main-layout">
+
+    <!-- LEFT: Chat Panel -->
+    <section class="chat-panel" aria-label="Panel Chat">
+      <div class="chat-header">
+        <div class="chat-avatar">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round"
+              d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+          </svg>
+        </div>
+        <div class="chat-header-info">
+          <h1>Emotion Detector</h1>
+          <p>Ketik perasaanmu — AI akan mendeteksi emosinya</p>
+        </div>
+      </div>
+
+      <div class="chat-messages" id="chatMessages" role="log" aria-live="polite">
+        <!-- Welcome -->
+        <div class="welcome-block" id="welcomeBlock">
+          <div class="welcome-text">
+            <p>Halo! Coba ceritakan perasaanmu dalam <strong>Bahasa Indonesia</strong>. AI akan mendeteksi emosimu secara real-time. 💙</p>
+          </div>
+          <div class="examples-grid">
+            <button class="example-chip" onclick="useExample(this)">aku senang banget hari ini!</button>
+            <button class="example-chip" onclick="useExample(this)">aku sedih ditinggal pergi</button>
+            <button class="example-chip" onclick="useExample(this)">kenapa sih selalu bikin kesal</button>
+            <button class="example-chip" onclick="useExample(this)">aku takut gagal ujian besok</button>
+            <button class="example-chip" onclick="useExample(this)">hari ini biasa saja sih</button>
+            <button class="example-chip" onclick="useExample(this)">aku tidak marah, cuma capek</button>
+          </div>
+        </div>
+      </div>
+
+      <form class="chat-input-area" id="chatForm" onsubmit="handleSubmit(event)">
+        <textarea
+          id="chatInput"
+          placeholder="Ketik pesan dalam Bahasa Indonesia... (Enter kirim)"
+          rows="1"
+          maxlength="1000"
+          autocomplete="off"
+          oninput="onInputChange(this)"
+          onkeydown="onKeyDown(event)"
+        ></textarea>
+        <button type="submit" id="sendBtn" disabled aria-label="Kirim pesan">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
+          </svg>
+        </button>
+      </form>
+      <p class="chat-disclaimer">SeribuCerita AI — bukan pengganti psikolog profesional</p>
+    </section>
+
+    <!-- RIGHT: Result Panel -->
+    <aside class="result-panel" aria-label="Hasil Analisis">
+      <div class="result-placeholder" id="resultPlaceholder">
+        <div class="placeholder-icon">🎯</div>
+        <p>Hasil analisis emosi akan muncul di sini setelah kamu mengirim pesan.</p>
+      </div>
+
+      <!-- Emotion Result Card (hidden by default) -->
+      <div class="result-card" id="resultCard" hidden>
+        <div class="result-card-header">
+          <span class="result-emoji" id="resultEmoji">😊</span>
+          <div class="result-meta">
+            <span class="result-label" id="resultLabel">happy</span>
+            <span class="result-confidence" id="resultConfidence">Confidence: 89%</span>
+          </div>
+          <div class="result-tag" id="resultTag">POSITIF</div>
+        </div>
+
+        <!-- Score Bars -->
+        <div class="score-list" id="scoreList"></div>
+
+        <!-- Calibration note -->
+        <div class="calibration-row" id="calibrationRow"></div>
+
+        <!-- Post-processing notes -->
+        <div class="notes-row" id="notesRow" hidden></div>
+
+        <!-- Timing -->
+        <div class="timing-row" id="timingRow">
+          <span id="serverTime">Server: —</span>
+          <span id="totalTime">Total: —</span>
+        </div>
+      </div>
+
+      <!-- History -->
+      <div class="history-section" id="historySection" hidden>
+        <h2 class="history-title">Riwayat</h2>
+        <div class="history-list" id="historyList"></div>
+        <button class="clear-btn" onclick="clearHistory()">Hapus Riwayat</button>
+      </div>
+    </aside>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,261 @@
+{
+  "info": {
+    "name": "SeribuCerita Emotion + Chat API",
+    "description": "REST API untuk klasifikasi emosi teks Bahasa Indonesia (IndoBERT) dan respons empatik AI (Gemini).\n\n**Capstone Project CC26-PSU212 — AI Path**\n\n**Base URL:** `https://syahrulw-seribucerita-emotion.hf.space`\n\n**Swagger UI:** https://syahrulw-seribucerita-emotion.hf.space/docs\n\n---\n\n## Kelas Emosi\n| Label | Emoji | Deskripsi |\n|---|---|---|\n| anger | 😠 | Marah / frustrasi |\n| fear | 😨 | Takut / cemas |\n| sad | 😢 | Sedih / berduka |\n| neutral | 😐 | Netral |\n| happy | 😄 | Senang / gembira |\n\n## Catatan\n- Semua endpoint **tidak memerlukan authentication**\n- CORS sudah dikonfigurasi untuk semua origin (`*`)\n- Cold start HF Spaces ~1-3 menit setelah idle",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "version": {
+      "major": 1,
+      "minor": 1,
+      "patch": 0
+    }
+  },
+  "variable": [
+    {
+      "key": "BASE_URL",
+      "value": "https://syahrulw-seribucerita-emotion.hf.space",
+      "type": "string",
+      "description": "Base URL HuggingFace Space. Ubah ke localhost untuk development lokal."
+    }
+  ],
+  "item": [
+    {
+      "name": "System",
+      "description": "Endpoint sistem: health check dan informasi API.",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{BASE_URL}}/health",
+              "host": ["{{BASE_URL}}"],
+              "path": ["health"]
+            },
+            "description": "Cek status API dan ketersediaan model IndoBERT dan Gemini.\n\n**Gunakan endpoint ini untuk:**\n- Memastikan API online sebelum request\n- Cek apakah model sudah ter-load\n- Cek apakah Gemini API key tersedia\n\n**Catatan Cold Start:** HuggingFace Spaces free tier memiliki cold start ~1-3 menit setelah idle. Jika `model_loaded: false`, tunggu dan retry."
+          },
+          "response": [
+            {
+              "name": "API Ready",
+              "status": "OK",
+              "code": 200,
+              "originalRequest": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{BASE_URL}}/health",
+                  "host": ["{{BASE_URL}}"],
+                  "path": ["health"]
+                }
+              },
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "body": "{\n  \"status\": \"healthy\",\n  \"model_loaded\": true,\n  \"gemini_available\": true\n}"
+            },
+            {
+              "name": "Model Belum Ready (Cold Start)",
+              "status": "Service Unavailable",
+              "code": 503,
+              "originalRequest": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{BASE_URL}}/health",
+                  "host": ["{{BASE_URL}}"],
+                  "path": ["health"]
+                }
+              },
+              "body": "{\n  \"detail\": \"Model not loaded\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Model Info",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{BASE_URL}}/model-info",
+              "host": ["{{BASE_URL}}"],
+              "path": ["model-info"]
+            },
+            "description": "Metadata model IndoBERT yang digunakan: backbone, kelas emosi, akurasi, dan macro F1-score."
+          },
+          "response": [
+            {
+              "name": "Model Info",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"model_name\": \"SeribuCerita Emotion Classifier\",\n  \"backbone\": \"indobenchmark/indobert-base-p1\",\n  \"task\": \"5-class Indonesian emotion classification\",\n  \"classes\": [\"anger\", \"fear\", \"sad\", \"neutral\", \"happy\"],\n  \"max_length\": 128,\n  \"metrics\": {\n    \"test_accuracy\": 0.8519,\n    \"test_macro_f1\": 0.8234\n  }\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Prediction (ML Mandiri)",
+      "description": "Endpoint klasifikasi emosi menggunakan IndoBERT. Tidak memerlukan Gemini API — hanya model ML.",
+      "item": [
+        {
+          "name": "Predict Single Text",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}/predict",
+              "host": ["{{BASE_URL}}"],
+              "path": ["predict"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"text\": \"aku senang banget hari ini!\",\n  \"calibrate\": true\n}",
+              "options": {
+                "raw": { "language": "json" }
+              }
+            },
+            "description": "Klasifikasi satu teks Bahasa Indonesia ke salah satu dari 5 emosi.\n\n**Field:**\n- `text` (required): Teks bahasa Indonesia, 1–1000 karakter\n- `calibrate` (optional, default: `true`): Aktifkan temperature scaling (T=1.5) dan post-processing corrections:\n  - Negation detection: 'tidak marah' → neutral\n  - Anger↔sad correction: borderline anger → sad\n\n**Post-processing notes:**\n- Jika ada koreksi, field `notes` akan muncul di response\n- `confidence` = skor raw model (sebelum calibration)\n- `calibrated_confidence` = skor setelah temperature scaling"
+          },
+          "response": [
+            {
+              "name": "Happy",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"label\": \"happy\",\n  \"confidence\": 0.9234,\n  \"calibrated_confidence\": 0.8156,\n  \"emoji\": \"😄\",\n  \"scores\": {\n    \"happy\": 0.8156,\n    \"neutral\": 0.0821,\n    \"sad\": 0.0412,\n    \"anger\": 0.0356,\n    \"fear\": 0.0255\n  },\n  \"processing_time_ms\": 45.23\n}"
+            },
+            {
+              "name": "Dengan Koreksi Negasi",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"label\": \"neutral\",\n  \"confidence\": 0.3120,\n  \"calibrated_confidence\": 0.1900,\n  \"emoji\": \"😐\",\n  \"scores\": {\n    \"anger\": 0.3100,\n    \"fear\": 0.1800,\n    \"sad\": 0.1700,\n    \"happy\": 0.1700,\n    \"neutral\": 0.1700\n  },\n  \"notes\": [\"negation detected, was anger\"],\n  \"processing_time_ms\": 42.10\n}"
+            }
+          ]
+        },
+        {
+          "name": "Predict Batch",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}/predict/batch",
+              "host": ["{{BASE_URL}}"],
+              "path": ["predict", "batch"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"texts\": [\n    \"aku senang banget hari ini!\",\n    \"aku takut menghadapi besok\",\n    \"biasa aja sih, gak ada yang spesial\",\n    \"aku marah banget sama dia!\",\n    \"aku nangis seharian\"\n  ],\n  \"calibrate\": true\n}",
+              "options": {
+                "raw": { "language": "json" }
+              }
+            },
+            "description": "Klasifikasi banyak teks sekaligus. Maksimal **32 teks per request**.\n\nCocok untuk:\n- Analisis feedback/komentar user secara massal\n- Dashboard analitik emosi\n- Testing model dengan banyak contoh"
+          },
+          "response": [
+            {
+              "name": "Batch Result",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"predictions\": [\n    {\n      \"label\": \"happy\",\n      \"confidence\": 0.9234,\n      \"calibrated_confidence\": 0.8156,\n      \"emoji\": \"😄\",\n      \"scores\": { \"happy\": 0.8156, \"neutral\": 0.0821, \"sad\": 0.0412, \"anger\": 0.0356, \"fear\": 0.0255 },\n      \"processing_time_ms\": 9.05\n    },\n    {\n      \"label\": \"fear\",\n      \"confidence\": 0.8891,\n      \"calibrated_confidence\": 0.7654,\n      \"emoji\": \"😨\",\n      \"scores\": { \"fear\": 0.7654, \"sad\": 0.1122, \"neutral\": 0.0654, \"anger\": 0.0412, \"happy\": 0.0158 },\n      \"processing_time_ms\": 9.04\n    }\n  ],\n  \"total_texts\": 5,\n  \"processing_time_ms\": 45.20\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Chat (ML + Generative AI)",
+      "description": "Endpoint utama yang menggabungkan IndoBERT dan Gemini AI.\n\n**Flow internal:**\n1. Teks user → IndoBERT → label emosi\n2. Label emosi + teks + history → Gemini AI → respons empatik\n3. Return keduanya sekaligus\n\n**Persona AI:** SeribuCerita — psikolog virtual yang hangat, empatik, dan tidak menghakimi. Menggunakan teknik OARS (Open question, Affirmation, Reflective listening, Summary).",
+      "item": [
+        {
+          "name": "Chat - Pesan Pertama",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}/chat",
+              "host": ["{{BASE_URL}}"],
+              "path": ["chat"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"text\": \"aku sedih banget hari ini, merasa gagal terus\",\n  \"history\": [],\n  \"calibrate\": true\n}",
+              "options": {
+                "raw": { "language": "json" }
+              }
+            },
+            "description": "Contoh pesan pertama tanpa history."
+          },
+          "response": [
+            {
+              "name": "Chat Response",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"emotion\": {\n    \"label\": \"sad\",\n    \"confidence\": 0.8721,\n    \"calibrated_confidence\": 0.7534,\n    \"emoji\": \"😢\",\n    \"scores\": {\n      \"sad\": 0.7534,\n      \"anger\": 0.1023,\n      \"fear\": 0.0654,\n      \"neutral\": 0.0512,\n      \"happy\": 0.0277\n    }\n  },\n  \"ai_response\": \"Aku turut merasakan kesedihan yang kamu alami. Merasa gagal itu berat banget, dan wajar kalau kamu sedih sekarang — perasaan itu valid. Aku di sini untuk mendengarkan. Mau ceritakan lebih lanjut apa yang membuat kamu merasa seperti itu?\",\n  \"ai_model\": \"gemini-2.5-flash\",\n  \"processing_time_ms\": 1523.45\n}"
+            }
+          ]
+        },
+        {
+          "name": "Chat - Multi-Turn (dengan History)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}/chat",
+              "host": ["{{BASE_URL}}"],
+              "path": ["chat"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"text\": \"aku sudah belajar keras tapi tetap gagal ujian\",\n  \"history\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"aku sedih banget hari ini, merasa gagal terus\"\n    },\n    {\n      \"role\": \"assistant\",\n      \"content\": \"Aku turut merasakan kesedihan yang kamu alami. Merasa gagal itu berat banget, dan wajar kalau kamu sedih sekarang. Mau ceritakan lebih lanjut apa yang membuat kamu merasa seperti itu?\"\n    }\n  ],\n  \"calibrate\": true\n}",
+              "options": {
+                "raw": { "language": "json" }
+              }
+            },
+            "description": "Contoh percakapan multi-turn. Kirim history percakapan sebelumnya agar AI memiliki konteks.\n\n**Penting untuk implementasi:**\n- Simpan setiap pasangan user/assistant message ke array history di frontend\n- Kirim array history yang terupdate di setiap request berikutnya\n- API hanya menggunakan **12 turn terakhir** untuk mencegah token limit\n- Tidak perlu menyimpan history di server — stateless"
+          },
+          "response": [
+            {
+              "name": "Multi-Turn Response",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"emotion\": {\n    \"label\": \"sad\",\n    \"confidence\": 0.9102,\n    \"calibrated_confidence\": 0.8234,\n    \"emoji\": \"😢\",\n    \"scores\": {\n      \"sad\": 0.8234,\n      \"anger\": 0.0854,\n      \"fear\": 0.0512,\n      \"neutral\": 0.0276,\n      \"happy\": 0.0124\n    }\n  },\n  \"ai_response\": \"Wah, kamu sudah berusaha keras banget — dan itu benar-benar patut dihargai. Kegagalan ujian meskipun sudah belajar keras itu terasa sangat tidak adil, dan aku bisa bayangkan betapa lelah dan frustrasinya kamu sekarang. Boleh ceritakan bagian mana yang paling berat buat kamu saat ini?\",\n  \"ai_model\": \"gemini-2.5-flash\",\n  \"processing_time_ms\": 1876.32\n}"
+            }
+          ]
+        },
+        {
+          "name": "Chat - Fallback (tanpa Gemini)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}/chat",
+              "host": ["{{BASE_URL}}"],
+              "path": ["chat"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"text\": \"aku takut banget sama masa depan\",\n  \"history\": [],\n  \"calibrate\": true\n}",
+              "options": {
+                "raw": { "language": "json" }
+              }
+            },
+            "description": "Jika Gemini API tidak tersedia (key tidak diset atau quota habis), endpoint tetap berjalan dengan **hardcoded fallback response** berdasarkan emosi yang terdeteksi.\n\nCek field `ai_model`: jika `\"fallback\"` berarti Gemini tidak tersedia."
+          },
+          "response": [
+            {
+              "name": "Fallback Response",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"emotion\": {\n    \"label\": \"fear\",\n    \"confidence\": 0.8934,\n    \"calibrated_confidence\": 0.7821,\n    \"emoji\": \"😨\",\n    \"scores\": {\n      \"fear\": 0.7821,\n      \"sad\": 0.1023,\n      \"neutral\": 0.0654,\n      \"anger\": 0.0312,\n      \"happy\": 0.0190\n    }\n  },\n  \"ai_response\": \"Rasa takut yang kamu rasakan itu sangat valid. Kamu nggak sendirian menghadapi ini — banyak orang juga pernah merasakan hal yang sama. Yang penting, kamu sudah mau berbagi dan itu langkah yang berani. Apa yang paling membuatmu khawatir saat ini? 💙\",\n  \"ai_model\": \"fallback\",\n  \"processing_time_ms\": 52.10\n}"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
