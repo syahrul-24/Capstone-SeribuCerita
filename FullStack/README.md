@@ -9,7 +9,7 @@
 ### Instalasi
 
 ```bash
-cd seribu_backends_fixed
+cd seribu_backends
 npm install
 ```
 
@@ -47,7 +47,7 @@ npm run dev
 ### Instalasi
 
 ```bash
-cd seribu_fixed
+cd seribu_frontend
 npm install
 ```
 
